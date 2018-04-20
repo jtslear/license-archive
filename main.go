@@ -98,6 +98,24 @@ func getData() []byte {
 	return bodyBytes
 }
 
+func archiveLicense(id string) error {
+	token := "REPLICATED_AUTHORIZATION_TOKEN"
+	authKey, exists := os.LookupEnv(token)
+	if !exists {
+		log.Fatalf("%s is missing\n", token)
+	}
+	client := &http.Client{}
+
+	URL := fmt.Sprintf("https://api.replicated.com/vendor/v1/license/%s", id)
+	req, _ := http.NewRequest("DELETE", URL, nil)
+	req.Header.Set("Authorization", authKey)
+	res, err := client.Do(req)
+	if err != nil || res.StatusCode != 204 {
+		return fmt.Errorf("status Code: %v\n%v", res.Status, err)
+	}
+	return nil
+}
+
 func main() {
 	licenses := getData()
 	collection := License{}
@@ -109,8 +127,12 @@ func main() {
 	collection = filter(collection)
 	fmt.Printf("Final Count: %d\n", len(collection))
 
-	//for i := len(collection) - 1; i >= 0; i-- {
-	//	URL := fmt.Sprintf("https://vendor.replicated.com/apps/waffleio/customers/%s/manage", collection[i].ID)
-	//	fmt.Printf("%s - %s\n", collection[i].Assignee, URL)
-	//}
+	for i := len(collection) - 1; i >= 0; i-- {
+		URL := fmt.Sprintf("https://vendor.replicated.com/apps/waffleio/customers/%s/manage", collection[i].ID)
+		fmt.Printf("%s - %s\n", collection[i].Assignee, URL)
+		err := archiveLicense(collection[i].ID)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 }
